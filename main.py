@@ -1,6 +1,5 @@
 import requests
 import json
-import time
 from tqdm import tqdm
 
 
@@ -20,7 +19,7 @@ class User:
         return {'Content-Type': 'application/json',
                 'Authorization': 'OAuth {}'.format(self.ya_token)}
 
-    def vk_params(self, owner_id, album_id='profile', rev=0, extended=1, photo_sizes=0, count=5):
+    def vk_params(self, owner_id, album_id='115034871', rev=0, extended=1, photo_sizes=0, count=5):
         return {'owner_id': owner_id,
                 'album_id': album_id,
                 'rev': rev,
@@ -31,8 +30,13 @@ class User:
                 'v': '5.131'}
 
     def photos_get(self, vk_user_id, count=5):
-        response = requests.get(VK_URL, params=self.vk_params(vk_user_id, count=count))
-        return response.json()['response']['items']
+        try:
+            response = requests.get(VK_URL, params=self.vk_params(vk_user_id, album_id=album(), count=count))
+            return response.json()['response']['items']
+        except KeyError:
+            print('Такого альбома нет, загружаем фото профиля')
+            response = requests.get(VK_URL, params=self.vk_params(vk_user_id, album_id='profile', count=count))
+            return response.json()['response']['items']
 
     def files_dict(self, vk_user_id, count=5):
         files = []
@@ -54,13 +58,13 @@ class User:
         with open('files_data.json', 'w') as write_file:
             json.dump(files, write_file)
         return files
+        # return self.photos_get(vk_user_id, count=count)['response']['items'][0]
 
     def ya_upload(self, file_path='/VK_profile_photos'):
         url_ya_upload = 'https://cloud-api.yandex.net/v1/disk/resources/upload'
         headers = self.ya_headers()
         status_codes = []
         for file in tqdm(files_data):
-            time.sleep(1)
             params = {'url': file['file_url'],
                       'path': f"{file_path}/{file['file_name']}"}
             res = requests.post(url_ya_upload, headers=headers, params=params)
@@ -82,9 +86,15 @@ class User:
             return True
 
 
+def album():
+    album_id = input('Введите ID альбома:')
+    return album_id
+
+
 if __name__ == '__main__':
     some_user = User(vk_token=VK_TOKEN, ya_token=ya_disk_api_token)
-    files_data = some_user.files_dict(5659985, count=6)
+    files_data = some_user.files_dict(5659985, count=20)
+    # pprint(files_data)
     folder = some_user.folder_creation()
     if folder:
         print(f"\n{some_user.ya_upload()}")
