@@ -19,7 +19,7 @@ class User:
         return {'Content-Type': 'application/json',
                 'Authorization': 'OAuth {}'.format(self.ya_token)}
 
-    def vk_params(self, owner_id, album_id='115034871', rev=0, extended=1, photo_sizes=0, count=5):
+    def vk_params(self, owner_id, album_id=input('Введите ID альбома:'), rev=0, extended=1, photo_sizes=0, count=5):
         return {'owner_id': owner_id,
                 'album_id': album_id,
                 'rev': rev,
@@ -31,7 +31,7 @@ class User:
 
     def photos_get(self, vk_user_id, count=5):
         try:
-            response = requests.get(VK_URL, params=self.vk_params(vk_user_id, album_id=album(), count=count))
+            response = requests.get(VK_URL, params=self.vk_params(vk_user_id, count=count))
             return response.json()['response']['items']
         except KeyError:
             print('Такого альбома нет, загружаем фото профиля')
@@ -44,10 +44,12 @@ class User:
         for item in self.photos_get(vk_user_id, count=count):
             file_data = {}
             file_name = str(item['likes']['count'])
-            if file_name+'.jpg' in [file['file_name'] for file in files]:
-                file_data['file_name'] = file_name + '_' + str(item['date']) + '.jpg'
+            extension_str = item['sizes'][0]['url'].split('?')[0]
+            extension = extension_str.split('.')[-1]
+            if file_name+'.'+extension in [file['file_name'] for file in files]:
+                file_data['file_name'] = file_name + '_' + str(item['date']) + '.' + extension
             else:
-                file_data['file_name'] = file_name + '.jpg'
+                file_data['file_name'] = file_name + '.' + extension
             for size_type in reversed(size_types):
                 if size_type in [size['type'] for size in item['sizes']]:
                     file_data['file_size'] = size_type
@@ -86,14 +88,10 @@ class User:
             return True
 
 
-def album():
-    album_id = input('Введите ID альбома:')
-    return album_id
-
-
 if __name__ == '__main__':
     some_user = User(vk_token=VK_TOKEN, ya_token=ya_disk_api_token)
-    files_data = some_user.files_dict(5659985, count=20)
+    # pprint(some_user.photos_get(5659985))
+    files_data = some_user.files_dict(5659985, count=6)
     # pprint(files_data)
     folder = some_user.folder_creation()
     if folder:
